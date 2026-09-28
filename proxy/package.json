@@ -1,0 +1,12 @@
+{
+  "name": "lavalink-dashboard-proxy",
+  "version": "1.0.0",
+  "description": "Reverse proxy + monitoring dashboard di depan Lavalink, dipakai supaya cuma butuh 1 port publik (cocok untuk Render).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "http-proxy": "^1.18.1"
+  }
+}

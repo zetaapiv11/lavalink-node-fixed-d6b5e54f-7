@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: lavalink-server
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: standard   # 2 GB RAM / 1 CPU. Kalau CPU sering >80% saat ramai, naik ke pro (4 GB / 2 CPU)
+    healthCheckPath: /healthz
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: SERVER_PORT
+        value: "2333"
+      - key: LAVALINK_SERVER_PASSWORD
+        sync: false
+      - key: STATS_TOKEN
+        sync: false
+      - key: LAVALINK_NODES
+        sync: false
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false
+      - key: SPOTIFY_COUNTRY_CODE
+        value: "ID"
+      - key: NODE_NAME
+        value: "render"
+      - key: PUBLIC_URL
+        sync: false
+      - key: DISK_PATH
+        value: "/"
+      - key: _JAVA_OPTIONS
+        value: "-Xms512M -Xmx1400M"

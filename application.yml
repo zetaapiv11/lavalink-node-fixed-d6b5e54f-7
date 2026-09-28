@@ -1,0 +1,92 @@
+server:
+  port: ${SERVER_PORT:2333}
+  # Lavalink HANYA internal (127.0.0.1). Port publik dipegang proxy (PORT).
+  # Kalau 0.0.0.0, Render mendeteksi 2333 sbg port publik -> browser kena 401 Lavalink.
+  address: 127.0.0.1
+  http2:
+    enabled: false
+
+plugins:
+  youtube:
+    enabled: true
+    allowSearch: true
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+    # Urutan client. YouTube lagi sering menolak client tertentu (SABR / "requires login"),
+    # jadi dicoba berurutan sampai ada yang lolos.
+    clients:
+      - MUSIC
+      - TVHTML5_SIMPLY
+      - WEB
+      - ANDROID_VR
+    # OAuth (opsional, sangat membantu kalau IP Render kena "sign in to confirm you're not a bot").
+    # Pakai akun burner, BUKAN akun utama. Aktifkan lewat env di Render, lihat README.
+    oauth:
+      enabled: ${YT_OAUTH_ENABLED:false}
+      refreshToken: "${YT_OAUTH_REFRESH_TOKEN:}"
+      skipInitialization: ${YT_OAUTH_SKIP_INIT:false}
+  lavasrc:
+    providers:
+      - "ytsearch:\"%ISRC%\""
+      - "ytsearch:%QUERY%"
+      - "scsearch:%QUERY%"   # cadangan kalau YouTube gagal
+    sources:
+      youtube: true
+      spotify: true
+      applemusic: false
+      deezer: false
+      yandexmusic: false
+      vkmusic: false
+    spotify:
+      # clientId and clientSecret are required for spsearch and Spotify URLs.
+      # Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in Render/VPS.
+      clientId: "${SPOTIFY_CLIENT_ID:}"
+      clientSecret: "${SPOTIFY_CLIENT_SECRET:}"
+      countryCode: "${SPOTIFY_COUNTRY_CODE:US}"
+
+lavalink:
+  plugins:
+    # YouTube source resmi Lavalink sudah lama diblokir Google,
+    # plugin ini menggantikannya dengan implementasi yang masih aktif dimaintain.
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.2"
+      repository: "https://maven.lavalink.dev/releases"
+    # Opsional: dukungan Spotify/Apple Music/Deezer (mirror lewat YouTube).
+    # Aktifkan sources di atas (plugins.lavasrc.sources) kalau mau pakai.
+    - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.8.3"
+      repository: "https://maven.lavalink.dev/releases"
+  server:
+    password: "${LAVALINK_SERVER_PASSWORD:youshallnotpass}"
+    sources:
+      youtube: false # dimatikan, diganti youtube-plugin di atas
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      http: true
+      local: false
+    bufferDurationMs: 400
+    frameBufferDurationMs: 5000
+    opusEncodingQuality: 5
+    resamplingQuality: LOW
+    trackStuckThresholdMs: 10000
+    useSeekGhosting: true
+    playerUpdateInterval: 5
+    youtubePlaylistLoadLimit: 6
+    soundcloudSearchEnabled: true
+    gc-warnings: true
+
+metrics:
+  prometheus:
+    enabled: false
+
+sentry:
+  dsn: ""
+
+logging:
+  level:
+    root: INFO
+    lavalink: INFO
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 5

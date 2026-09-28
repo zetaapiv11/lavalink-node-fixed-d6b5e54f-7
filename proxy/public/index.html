@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lavalink Node — Monitor & Player Test</title>
+<style>
+:root{--bg:#0F1715;--panel:#16211E;--line:#2A3A36;--text:#E9EFEC;--dim:#8FA39D;--amber:#E8A33D;--teal:#5FC9B0;--red:#E4634E}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 ui-monospace,"JetBrains Mono",monospace}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 60px}
+nav{display:flex;gap:16px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:22px}
+nav h1{font-size:18px;margin:0 auto 0 0}nav a{color:var(--dim);text-decoration:none}nav a:hover{color:var(--teal)}
+.st{display:flex;align-items:center;gap:6px;color:var(--dim)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--red)}.dot.on{background:var(--teal);box-shadow:0 0 8px var(--teal)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:16px;margin-bottom:16px}
+.card h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.kv{display:flex;gap:8px;margin-bottom:8px;align-items:center}.kv span{width:80px;color:var(--dim)}
+code{background:#0c1412;border:1px solid var(--line);padding:4px 8px;border-radius:3px;flex:1;overflow:auto;white-space:nowrap}
+button,select,input{font:inherit;color:var(--text);background:#0c1412;border:1px solid var(--line);border-radius:3px;padding:8px 10px}
+button{cursor:pointer;color:var(--amber);border-color:var(--amber)}button:hover{background:#1c2825}
+.big{font-size:26px;font-weight:700}.big small{font-size:14px;color:var(--dim);font-weight:400}
+.bar{height:8px;background:#0c1412;border-radius:4px;overflow:hidden;margin:8px 0}.bar i{display:block;height:100%;width:0;background:var(--teal);transition:width .4s}
+.bar.cpu i{background:var(--amber)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chips span{border:1px solid var(--line);padding:4px 10px;border-radius:99px;background:#0c1412}
+.nrow{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--line)}.nrow span:first-child{color:var(--dim)}
+.card h3{margin:0 0 10px;font-size:16px;display:flex;align-items:center;gap:8px}.conn{display:none;margin-top:12px}.conn.show{display:block}
+.dim{color:var(--dim);font-size:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.row input{flex:1;min-width:180px}
+.tr{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line);align-items:center}
+.tr img,.tr .ph{width:56px;height:56px;border-radius:3px;object-fit:cover;background:#0c1412;flex:none}
+.tr div{min-width:0;flex:1}.tr b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msg{padding:10px;border-radius:3px;margin-bottom:10px;display:none}.msg.ok{display:block;background:#12332c;color:var(--teal)}.msg.bad{display:block;background:#3a1d18;color:#f2a598}
+.banner{display:none;background:#3a1d18;color:#f2a598;padding:10px;border-radius:3px;margin-bottom:16px}.banner.show{display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <h1 id="nodeName">Lavalink Node</h1>
+    <a href="#nodes">Nodes</a><a href="#player">Player Test</a>
+    <span class="st"><span class="dot" id="dot"></span><span id="stText">menghubungkan…</span></span>
+  </nav>
+  <div class="banner" id="banner">Tidak bisa mengambil data dari Lavalink. Node mungkin sedang restart.</div>
+
+  <div id="nodes" class="grid"><div class="card dim">Memuat node…</div></div>
+
+  <div class="card">
+    <h2>Sumber yang didukung</h2>
+    <div class="chips"><span>YouTube</span><span>YouTube Music</span><span>Spotify</span><span>SoundCloud</span><span>Bandcamp</span><span>Twitch</span><span>Vimeo</span><span>HTTP stream / file</span></div>
+    <div class="dim" style="margin-top:8px">Spotify memakai LavaSrc untuk metadata dan mirror playback. Isi kredensial Spotify di environment node jika ingin mengaktifkan pencarian Spotify.</div>
+  </div>
+
+  <div class="card" id="player">
+    <h2>Player Test — cek node bisa cari & resolve lagu</h2>
+    <div class="row">
+      <select id="node"><option value="self">Render / node utama</option></select>
+      <select id="src"><option value="ytsearch">YouTube</option><option value="ytmsearch">YouTube Music</option><option value="spsearch">Spotify</option><option value="scsearch">SoundCloud</option></select>
+      <input id="q" placeholder="Judul lagu, atau tempel link (YouTube/SoundCloud/dll)" />
+      <button id="go">Cari / Load</button>
+    </div>
+    <div class="msg" id="res"></div>
+    <div id="list"></div>
+    <div class="dim">Ini hanya tes resolve di sisi node. Audio asli tetap dikirim ke Discord lewat bot kamu, bukan diputar di browser.</div>
+  </div>
+
+  <div class="card"><h2>Aktivitas terakhir</h2><div id="log" class="dim">Belum ada pencarian.</div></div>
+  <div class="dim" id="upd" style="text-align:right">—</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const fmtB=b=>b==null?"–":b>1073741824?(b/1073741824).toFixed(2)+" GB":Math.round(b/1048576)+" MB";
+const fmtT=ms=>{const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}:${String(m).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`:`${m}:${String(s%60).padStart(2,"0")}`};
+const fmtU=ms=>{const s=Math.floor(ms/1000),d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return d?`${d}h ${h}j`:h?`${h}j ${m}m`:`${m}m`};
+const cp=(t,b)=>{navigator.clipboard.writeText(t);const o=b.textContent;b.textContent="tersalin";setTimeout(()=>b.textContent=o,1200)};
+const open_=new Set();
+function card(n,i){
+  const s=n.stats,cpu=s?Math.round((s.cpu?.lavalinkLoad??0)*100):null,sys=s?Math.round((s.cpu?.systemLoad??0)*100):null;
+  const used=s?.memory?.used??0,max=s?.memory?.reservable||s?.memory?.allocated||0;
+  const host=s?.host||{}, hostMemory=host.memory||{}, disk=host.disk;
+  const f=s?.frameStats;
+  const r=(k,v)=>`<div class="nrow"><span>${k}</span><span>${v}</span></div>`;
+  return `<div class="card"><h3><span class="dot ${n.online?"on":""}"></span>${esc(n.name)}</h3>
+    ${r("Status",n.online?"Online":"Offline")}
+    ${r("Players",s?s.players:"–")}
+    ${r("Playing players",s?s.playingPlayers:"–")}
+    ${r("Uptime",s?fmtU(s.uptime):"–")}
+    ${r("Uptime % (sejak monitor jalan)",n.uptimePct==null?"–":n.uptimePct+"%")}
+    ${r("CPU sistem",sys==null?"–":sys+"%")}
+    ${r("CPU host",host.cpuPercent==null?"–":host.cpuPercent+"%")}
+    ${r("Lavalink / Java load",cpu==null?"–":cpu+"%")}
+    ${r("Memory (heap)",s&&max?`${fmtB(used)} / ${fmtB(max)}`:"–")}
+    ${r("RAM host",hostMemory.total?`${fmtB(hostMemory.used)} / ${fmtB(hostMemory.total)}`:"–")}
+    ${r("Disk host",disk?`${fmtB(disk.used)} / ${fmtB(disk.total)} (${disk.usedPercent}%)`:"–")}
+    ${r("Frame null / defisit",s?(f?`${f.nulled} / ${f.deficit}`:"idle"):"–")}
+    <div style="margin-top:12px"><button data-t="${i}">${open_.has(i)?"Sembunyikan":"Tampilkan"} detail koneksi</button></div>
+    <div class="conn ${open_.has(i)?"show":""}">
+      <div class="kv"><span>Host</span><code>${esc(n.host)}</code><button data-cp="${esc(n.host)}">salin</button></div>
+      <div class="kv"><span>Port</span><code>${n.port}</code></div>
+      <div class="kv"><span>Auth</span><code>dikelola aman di server</code></div>
+      <div class="kv"><span>Secure</span><code>${n.secure}</code></div>
+    </div></div>`;
+}
+async function refresh(){
+  try{
+    const r=await fetch("/api/nodes",{cache:"no-store"});if(!r.ok)throw 0;const list=await r.json();
+    $("banner").classList.remove("show");
+    const up=list.filter(n=>n.online).length;
+    $("dot").className="dot"+(up?" on":"");$("stText").textContent=`${up}/${list.length} node online`;
+    $("nodeName").textContent="Lavalink Nodes";
+    $("nodes").innerHTML=list.map(card).join("");
+    const currentNode=$("node").value;
+    $("node").innerHTML=list.map(n=>`<option value="${esc(n.id)}">${esc(n.name)}${n.online?"":" (offline)"}</option>`).join("");
+    $("node").value=list.some(n=>n.id===currentNode)?currentNode:"self";
+    $("nodes").querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{const k=+b.dataset.t;open_.has(k)?open_.delete(k):open_.add(k);refresh()});
+    $("nodes").querySelectorAll("[data-cp]").forEach(b=>b.onclick=()=>cp(b.dataset.cp,b));
+    $("upd").textContent="diperbarui "+new Date().toLocaleTimeString("id-ID");
+  }catch(e){$("dot").className="dot";$("stText").textContent="offline";$("banner").classList.add("show")}
+}
+refresh();setInterval(refresh,5000);
+const esc=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const logs=[];
+async function search(){
+  const q=$("q").value.trim();if(!q)return;
+  const m=$("res"),l=$("list");m.className="msg";l.innerHTML="";$("go").disabled=true;$("go").textContent="memuat…";
+  let note;
+  try{
+    const r=await fetch(`/api/search?node=${encodeURIComponent($("node").value)}&src=${$("src").value}&q=${encodeURIComponent(q)}`);const d=await r.json();
+    if(d.error){m.className="msg bad";m.textContent="Gagal: "+d.error;note="❌ "+q+" — "+d.error}
+    else if(!d.tracks.length){m.className="msg bad";m.textContent="Tidak ada hasil ("+d.loadType+")";note="⚠ "+q+" — kosong"}
+    else{m.className="msg ok";m.textContent=(d.playlist?`Playlist: ${d.playlist} — `:"")+`${d.tracks.length} hasil (${d.loadType}). Node berhasil resolve.`;note="✅ "+q+" — "+d.tracks.length+" hasil";
+      l.innerHTML=d.tracks.map(t=>`<div class="tr">${t.artwork?`<img src="${esc(t.artwork)}" alt="" referrerpolicy="no-referrer">`:'<div class="ph"></div>'}<div><b>${esc(t.title)}</b><span class="dim">${esc(t.author)} · ${t.live?"LIVE":fmtT(t.length)} · ${esc(t.source)}</span></div></div>`).join("")}
+  }catch(e){m.className="msg bad";m.textContent="Request gagal: "+e.message;note="❌ "+q}
+  logs.unshift(new Date().toLocaleTimeString("id-ID")+" "+note);logs.length=Math.min(logs.length,6);
+  $("log").innerHTML=logs.map(esc).join("<br>");
+  $("go").disabled=false;$("go").textContent="Cari / Load";
+}
+$("go").onclick=search;$("q").onkeydown=e=>{if(e.key==="Enter")search()};
+</script>
+</body>
+</html>
